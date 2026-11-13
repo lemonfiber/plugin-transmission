@@ -4,16 +4,17 @@
 #
 #   gates     gates / gates
 #   pin-only  pin-only / pin-only
-#   plugin    reader, manifest, proofs, image, reader-tests,
-#             bundled-part / what changed, bundled-part / plugin
-#   codeql    analyze (actions), analyze (python), alerts / alerts
+#   plugin    plugin / what changed, plugin / plugin, recordings
+#   rust      fmt, clippy, test, coverage, deny, msrv
+#   adapter   adapter-image
+#   codeql    analyze (actions), analyze (rust), alerts / alerts
 #   sonar     gate / gate
 #
 # Add a workflow to branch protection and it belongs here in the same change.
 name: awaiting-maintainer
 on:
   workflow_run:
-    workflows: [gates, pin-only, plugin, codeql, sonar]
+    workflows: [gates, pin-only, plugin, rust, adapter, codeql, sonar]
     types: [completed]
   pull_request_review:
     types: [submitted]
