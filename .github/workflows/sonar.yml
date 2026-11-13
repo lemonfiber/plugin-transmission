@@ -1,0 +1,20 @@
+# Gate pull requests on zero SonarCloud issues (Q-R64). The scan is
+# SonarCloud's Automatic Analysis; the shared gate reads its summary.
+name: sonar
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  gate:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: lemonfiber/spec/.github/workflows/sonar-gate.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    with:
+      allowed-open: 0
+    secrets:
+      sonar-token: ${{ secrets.SONAR_TOKEN }}

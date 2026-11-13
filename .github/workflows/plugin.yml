@@ -1,0 +1,138 @@
+# What this repository says about its own plugin, before anybody reads the diff.
+#
+# `F3-R9` asks for the manifest schema to be validated in CI so a malformed
+# contribution is caught before merge, and `F5-R13` asks for every declared proof
+# to run. `F10-R7` is the reason both run *here* rather than only in the
+# catalogue: an author's own repository has to run the same commands the
+# catalogue runs, or the first time a plugin meets them is in somebody else's
+# pull request.
+#
+# Every verdict is lemonfiber's own: `.github/reader/reader.py` fetches the
+# release `targets.toml` names, checks it against the digest published with it,
+# and asks it `lemonfiber plugin claims` and `lemonfiber plugin provenance`
+# about this directory (`F10-R3`). Nothing here describes the format; `F10-R2`
+# forbids a second description beside the generated one.
+name: plugin
+on: [pull_request]
+permissions:
+  contents: read
+
+# A pull request pushed again cancels the run on its old head, which nobody
+# will read and which holds runners the org shares (Q-R75). Every other event
+# is grouped by its own run, so it is never cancelled and never cancels.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # The release `targets.toml` names is out, is the file its published digest
+  # names, and reads this plugin. What it says is printed whole, and a capability
+  # the release does not offer a plugin is reported as a notice: naming a
+  # release is not a claim the plugin installs on it (`REPO-R56`, `F3-R21`).
+  reader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The release this plugin names, and what it says of it
+        run: python3 .github/reader/reader.py reader
+
+  # Every refusal the release makes of the manifest, each named with its location:
+  # the schema, the capability vocabulary and the extension points it publishes,
+  # and the rules that read the manifest as a whole.
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: plugin.toml, as the release reads it
+        run: python3 .github/reader/reader.py manifest
+
+  # Every probe, proof and contributed check, against the recording it names,
+  # which is what lets this run with no live instance anywhere (F10-R4). One
+  # failing on a recording its manifest declares it fails on, on the constraint
+  # the declaration names, is reported as failing as declared with the reason,
+  # and fails nothing (F10-R13). Anything else that did not pass fails, unproven
+  # included (F3-R5). The report is committed, so a run that would write a
+  # different one fails rather than silently disagreeing with the record the
+  # release train reads.
+  proofs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Everything this manifest declares, against the recorded responses
+        run: python3 .github/reader/reader.py proofs
+      # A bare `git diff --exit-code` prints a diff and no reason for it, which
+      # leaves whoever reads it to work out both what the file is and which of
+      # the two copies is wrong. Neither is: the committed one is a record and
+      # the run just wrote the current one.
+      - name: The committed report is the one this run would write
+        run: |
+          if git diff --exit-code -- proofs.json; then exit 0; fi
+          echo "::error::proofs.json is not what this run writes. It is the record \
+          the release train reads, so it is generated and committed together with \
+          the manifest it is about: run \`python3 .github/reader/reader.py proofs\` \
+          and commit the result. The diff above is the committed file against what \
+          this run produced (F3-R5)."
+          exit 1
+
+  # Every pinned digest is in its registry and the tag beside it still names it
+  # (F3-R8), and what vouches for each image, reported as unproven where nothing
+  # does and never as verified (F3-R25).
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The images this plugin installs
+        run: python3 .github/reader/reader.py image
+
+  # What the reader writes down and fails on, given what a release said: every
+  # verdict as it was given, and failing as declared apart from passed and failed
+  # with the declaration behind it (F10-R13). No release is fetched; the verdicts
+  # are the release's, and this is the part that is the reader's.
+  reader-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The reader writes down what the release said
+        run: python3 -m unittest discover -s .github/reader
+
+  # The bundled-part variant, judged as a bundled part's own repository judges it.
+  bundled-part:
+    uses: lemonfiber/spec/.github/workflows/first-party-plugin.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    with:
+      directory: bundled-part
+
+  # The built-part variant, judged as a built part's own repository judges it.
+  built-part:
+    uses: lemonfiber/spec/.github/workflows/first-party-plugin.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    with:
+      directory: built-part

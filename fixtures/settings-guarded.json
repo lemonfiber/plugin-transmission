@@ -1,0 +1,16 @@
+{
+  "recorded_from": "docker.io/jvmilazz0/kavita@sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2",
+  "note": "An unauthenticated read of the server's own settings. What the contributed check asks every time the doctor runs, rather than once at install.",
+  "request": {
+    "method": "GET",
+    "path": "/api/settings"
+  },
+  "response": {
+    "status": 401,
+    "headers": {
+      "content-type": ""
+    },
+    "json": null,
+    "body_starts_with": ""
+  }
+}

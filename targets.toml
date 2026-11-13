@@ -1,0 +1,26 @@
+# The lemonfiber release this plugin is validated and proved against (REPO-R56).
+#
+# It is deliberately not in `plugin.toml`, and could not be: `ARCH-R89` forbids a
+# manifest carrying a minimum lemonfiber version, because `F3-R21` requires an
+# unmet requirement to be refused by naming the capability that is missing rather
+# than a number that cannot say which one. What the manifest declares instead is
+# `[requires].capabilities`.
+#
+# This is a different fact, and a CI one: which release this repository's checks
+# run, and which release the version train re-validates this plugin against when
+# it cuts. A plugin that no longer validates against a new schema blocks that
+# release, and this line is how the train knows which plugin it is looking at.
+#
+# `.github/reader/reader.py` fetches this release and asks it about the plugin,
+# so every verdict CI reports is this release's own. Naming it is not a claim the
+# plugin installs on it: a capability in `[requires]` the release does not offer
+# is reported by name (`F3-R21`) rather than failed on.
+#
+# A plugin that needs what lemonfiber has on `main` and no release carries yet
+# names that commit in full instead, `commit = "<40 hex>"`, and no release at
+# all. The reader refuses a commit `main` does not hold, builds the one it
+# does the way the release train builds the build it is about to tag, keeps it in
+# `.lemonfiber/` under the commit, and asks it the same questions. The
+# manifest's `#:schema` line then names the schema committed at that commit.
+
+lemonfiber = "0.16.0"

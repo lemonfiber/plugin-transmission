@@ -1,0 +1,71 @@
+schema_version = 1
+
+[plugin]
+id          = "sabnzbd"
+name        = "SABnzbd"
+version     = "1.0.0"
+description = "Downloads from Usenet"
+without_it  = "No Usenet downloads"
+upstream    = "https://github.com/sabnzbd/sabnzbd"
+license     = "GPL-2.0-only"
+forms       = ["dl", "hunt", "tv", "movies", "music", "books", "auto", "full"]
+
+[[service]]
+id          = "sabnzbd"
+name        = "SABnzbd"
+image       = "lscr.io/linuxserver/sabnzbd"
+digest      = "sha256:374051b90f64d107f8658dcd9b9065c28826afe14562647214f45057e119fc04"
+tag         = "4.5.5-ls250"
+port        = 8085
+bind        = "loopback"
+listens     = 8080
+health      = { kind = "http", path = "/api?mode=version", timeout_s = 60 }
+criticality = "core"
+memory_mib  = 150
+reaches     = "your Usenet provider"
+asks_for    = "Signs in with your account and fetches the articles a download is made of."
+takes_data  = true
+user_mode   = "puid-env"
+native      = "sabnzbd"
+replaces    = "sabnzbd"
+
+[[service]]
+id          = "sabnzbd-adapter"
+name        = "SABnzbd adapter"
+image       = "ghcr.io/lemonfiber/sabnzbd-adapter"
+digest      = "sha256:07218ae73c13cc5c821dd89efb2f58fa6555e2fd1ba5657c6be253449eca1c41"
+tag         = "main-d9ff382d4cb2"
+criticality = "core"
+reaches     = ""
+asks_for    = "Nothing beyond this machine. It answers lemonfiber's download.usenet contract by calling SABnzbd, beside it, with the key lemonfiber minted for it."
+config_path = "/config"
+listens     = 8080
+speaks      = ["download.usenet@1"]
+fronts      = "sabnzbd"
+provides    = ["download.usenet"]
+upstream    = { api_key = { secret = "upstream-key" } }
+
+[[secret]]
+id     = "upstream-key"
+of     = "sabnzbd"
+minted = true
+why    = "The key SABnzbd answers its API to, which the adapter in front of it presents"
+carried_from = { file = "/config/sabnzbd.ini", format = "ini", key = "misc.api_key" }
+
+[[proof]]
+id      = "sabnzbd.guarded"
+service = "sabnzbd"
+title   = "SABnzbd shows its queue to nobody presenting nothing"
+fixture = "recordings/sabnzbd/queue-guarded.json"
+why     = """
+The queue names what the household is downloading and the account paying for
+it. Only the adapter asks it, with the key lemonfiber minted, so a SABnzbd that
+answered it to a caller presenting nothing would be telling every device that
+can reach it.
+"""
+request = { method = "GET", path = "/api?mode=queue&output=json" }
+expect  = { status = 403, body_starts_with = "API Key Required" }
+
+[[ask]]
+service    = "sabnzbd"
+capability = "dashboard.show"

@@ -1,0 +1,16 @@
+{
+  "recorded_from": "docker.io/jvmilazz0/kavita@sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2",
+  "note": "A path this service does not implement. It answers 200 with the single-page app, which is why a proof about this service must assert a body and never a status.",
+  "request": {
+    "method": "GET",
+    "path": "/api/not-a-real-path"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/HTML"
+    },
+    "json": null,
+    "body_starts_with": "﻿<!doctype html>\n<html lang=\"en\" role=\"main\" data-beasties-c"
+  }
+}

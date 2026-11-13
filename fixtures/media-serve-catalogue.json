@@ -1,0 +1,43 @@
+{
+  "recorded_from": "docker.io/jvmilazz0/kavita@sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2",
+  "note": "The same read, answered with the operator's credential. Recorded from an instance with one library pointed at /data/media/comics and one comic in it, because a catalogue probe against an empty catalogue demonstrates the shape and not the serving.",
+  "request": {
+    "method": "GET",
+    "path": "/api/library/libraries"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=utf-8"
+    },
+    "json": [
+      {
+        "id": 1,
+        "name": "Comics",
+        "lastScanned": "2026-09-15T17:33:16.7311457",
+        "type": 1,
+        "coverImage": null,
+        "folderWatching": false,
+        "includeInDashboard": false,
+        "includeInRecommended": true,
+        "manageCollections": false,
+        "manageReadingLists": false,
+        "includeInSearch": true,
+        "allowScrobbling": false,
+        "folders": [
+          "/data/media/comics"
+        ],
+        "collapseSeriesRelationships": false,
+        "libraryFileTypes": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "excludePatterns": [],
+        "allowMetadataMatching": false,
+        "enableMetadata": true
+      }
+    ]
+  }
+}

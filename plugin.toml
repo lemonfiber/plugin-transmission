@@ -1,0 +1,189 @@
+#:schema https://github.com/lemonfiber/lemonfiber/releases/download/v0.16.0/plugin-manifest.schema.json
+# The template plugin. Copy this repository, replace the service, keep the shape.
+#
+# Contract: https://github.com/lemonfiber/spec/blob/main/20-architecture/contracts/plugin-manifest.md
+#
+# Everything lemonfiber does on a plugin's behalf comes from this file, and it
+# knows nothing about the plugin that is not declared here (ARCH-R83). Nothing in
+# it is executable, and nothing in it can be (F3-R1, F3-R6).
+#
+# The service described here is real, and that is the point. F10-R7 asks for a
+# template that validates and proves *unmodified*, and a template whose proofs
+# are invented teaches an author to invent proofs. Every recording under
+# fixtures/ came off this image at this digest.
+
+schema_version = 1
+
+[plugin]
+id          = "kavita"
+name        = "Kavita"
+version     = "1.0.0"
+description = "Reads comics, manga and ebooks in a browser, and remembers where everybody got to"
+without_it  = "A folder of CBZ and EPUB files, opened one at a time with nothing keeping your place"
+upstream    = "https://github.com/Kareadita/Kavita"
+license     = "GPL-3.0-only"
+forms       = ["library", "full"]
+
+# The two forms that serve a library rather than acquire one. Neither `books`
+# nor `auto` is named: those acquire, and this acquires nothing.
+
+[[service]]
+id     = "kavita"
+name   = "Kavita"
+image  = "docker.io/jvmilazz0/kavita"
+# What actually runs (F3-R8, ARCH-R95). `tag` is the readable name for this
+# digest and is never resolved.
+digest = "sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2"
+tag    = "0.8.7"
+port   = 5000
+# A household service: the point of it is the tablet on the sofa. The tier is
+# all this may say — the address is lemonfiber's to assign (ARCH-R88), and so is
+# whether it is reachable by name at all (ARCH-R104).
+bind   = "lan"
+# Measured on a warm machine with the image already pulled: it runs its database
+# migrations before it opens its listener, and answered in 11s.
+health = { kind = "http", path = "/api/health", timeout_s = 90 }
+criticality = "enhancing"
+
+takes_data  = true
+media_types = ["comics", "books"]
+
+# This image has no /config. It keeps its database, its covers and its settings
+# under /kavita/config, and a generated container mounting /config would mount a
+# directory the application never reads — installing cleanly, answering its
+# health probe, and losing everything the moment the container was replaced.
+config_path = "/kavita/config"
+
+# What it can do (F4-R1). A core name comes from lemonfiber's published
+# vocabulary and is demonstrated by the [[claim]] below; a name of this plugin's
+# own is namespaced with the plugin's id (F4-R4) and is inert until something
+# asks for it.
+provides = [
+    "media.serve",
+    "kavita:opds",
+]
+
+# ─── The core capability, and the probes that demonstrate it ─────────────────
+#
+# The vocabulary says what must be shown; this says where to ask it. A claim that
+# left a probe unbound, or bound one with an expectation weaker than the probe
+# permits, is refused naming the probe (ARCH-R109).
+
+[[claim]]
+capability = "media.serve"
+
+[[claim.probe]]
+id      = "guarded"
+request = { method = "GET", path = "/api/library/libraries" }
+expect  = { status = 401 }
+fixture = "fixtures/media-serve-guarded.json"
+
+# `json_array_min = 0` is the assertion "the answer reads as an array", and
+# nothing about how long it is. That is deliberate: this service answers with a
+# list rather than an object, so none of the key-wise constraints can say anything
+# about it — and a probe demanding a *non-empty* list would refuse to install this
+# on the machine of somebody who has not copied their books over yet. What a check
+# may assert about the operator's own data, a probe may not.
+[[claim.probe]]
+id      = "catalogue"
+request = { method = "GET", path = "/api/library/libraries" }
+expect  = { status = 200, json_array_min = 0 }
+fixture = "fixtures/media-serve-catalogue.json"
+
+# A list, and one entry, because wiring is a fact about a service rather than
+# about a plugin (ARCH-R127). A template declaring one service names none in its
+# entry; add `service = "..."` to each the day this declares two, because a
+# hostname left to be inferred is an inference about which one the household
+# reaches.
+[[wiring]]
+# A label in front of the operator's own domain, never an address — and a word
+# the household would go there for rather than the name of the software.
+hostname        = "reader"
+dashboard_group = "Library"
+
+[requires]
+capabilities = ["service.add", "service.health.http", "doctor.contribute"]
+
+# ─── Proofs ──────────────────────────────────────────────────────────────────
+#
+# What must hold before this is installed. Every one asserts a body: a status is
+# a claim about the network path and not about the service, because Docker
+# publishes a port by putting a proxy in front of it and that proxy accepts a
+# connection before knowing whether anything inside is listening (ARCH-R105).
+
+[[proof]]
+id      = "kavita.serves"
+title   = "Kavita answers on its declared health path"
+fixture = "fixtures/api-health.json"
+why     = """
+The health probe the manifest declares is what lifecycle waits on, so the first
+proof is that the path in the manifest is a path this image serves. It answers
+`Ok` as plain text rather than JSON, so this asserts the content type and the
+first bytes — which is what asserting a body means where the body is not JSON.
+"""
+request = { method = "GET", path = "/api/health" }
+expect  = { status = 200, content_type = "text/plain", body_starts_with = "Ok" }
+
+[[proof]]
+id      = "kavita.status-is-not-an-answer"
+title   = "An unimplemented path answers 200, so a status proves nothing here"
+fixture = "fixtures/api-unimplemented-path.json"
+why     = """
+Asked for a path it does not implement, this service returns 200 and its
+single-page app. That is not a defect — it is how a client-routed application
+serves deep links — but it means the usual shorthand for "is it up" is worthless
+against this image.
+
+Recording it is what makes the shape of every other proof here reviewable rather
+than folklore, and turns a change in this behaviour into a red proof rather than
+a probe that has quietly gone blind.
+"""
+request = { method = "GET", path = "/api/not-a-real-path" }
+expect  = { status = 200, content_type = "text/HTML", json_is_absent = true, body_starts_with = "﻿<!doctype html>" }
+
+# ─── Contributions ───────────────────────────────────────────────────────────
+#
+# A row in a register lemonfiber already runs, never an interpreter of its own
+# (F3-R26). The doctor already runs checks independently, bounds each one, keeps
+# `unverified` distinct from `pass`, and carries a remedy on anything that does
+# not pass. This is another row in that register, attributed to this plugin
+# wherever it appears.
+
+[[contribution]]
+at        = "doctor.check"
+id        = "kavita:settings-guarded"
+title     = "Kavita's server settings are not readable by the household network"
+category  = "network"
+timeout_s = 10
+fixture   = "fixtures/settings-guarded.json"
+why       = """
+This service declares `bind = "lan"` and a hostname, which together put it in
+front of every device on the household network under a name they can remember.
+What makes that safe is Kavita refusing an unauthenticated read of its own
+settings, and nothing else here would notice if it stopped: the health probe
+would still pass and the reader would still work.
+
+The `guarded` probe above asks a version of this question once, at install. This
+asks it every time the doctor runs, which is when it matters — an upgrade, a
+reconfiguration or a reverse proxy in front of it are all ways for a service to
+stop refusing what it used to refuse.
+"""
+request   = { method = "GET", path = "/api/settings" }
+expect    = { status = 401 }
+
+[[contribution]]
+at     = "doctor.remedy"
+id     = "kavita:close-the-settings"
+for    = "kavita:settings-guarded"
+action = "Stop Kavita and check what is in front of it before starting it again"
+why    = """
+Kavita's settings are readable without signing in, which means anything on the
+household network can read them — and on this network that is every phone,
+television and games console in the house.
+"""
+detail = """
+The usual cause is something in front of the service rather than the service
+itself: a reverse proxy configured to strip the Authorization header, or a
+second route to it that lemonfiber did not write. Kavita itself refuses this
+read on a default install.
+"""

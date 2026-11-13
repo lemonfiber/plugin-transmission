@@ -1,0 +1,26 @@
+# The built-part variant's image, built and run under the posture its manifest
+# declares as a part's repository runs it on a pull request (ARCH-R250). Only a
+# pull request runs it here, so nothing is published or pinned from the template.
+name: built-part
+on: [pull_request]
+permissions:
+  contents: read
+
+# A pull request pushed again cancels the run on its old head, which nobody
+# will read and which holds runners the org shares (Q-R75).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # A reusable workflow is refused where its caller grants less than any of its
+  # jobs asks, published or not; on a pull request nothing is published.
+  image:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: lemonfiber/spec/.github/workflows/first-party-image.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    with:
+      directory: built-part

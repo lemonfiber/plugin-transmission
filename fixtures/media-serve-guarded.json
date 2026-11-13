@@ -1,0 +1,16 @@
+{
+  "recorded_from": "docker.io/jvmilazz0/kavita@sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2",
+  "note": "An unauthenticated read of the catalogue of libraries. A refusal is the pass: a reader bound to the household network that answered this would be publishing the shape of somebody's collection to every device on it.",
+  "request": {
+    "method": "GET",
+    "path": "/api/library/libraries"
+  },
+  "response": {
+    "status": 401,
+    "headers": {
+      "content-type": ""
+    },
+    "json": null,
+    "body_starts_with": ""
+  }
+}

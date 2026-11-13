@@ -1,0 +1,18 @@
+{
+  "lemonfiber": "be45fdf626d7f1018bbf838d84813079a04ed0ca",
+  "against": "recordings",
+  "proofs": [
+    {
+      "id": "door.refuses-an-id-in-braces",
+      "kind": "proof",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "id": "door.version",
+      "kind": "proof",
+      "outcome": "passed",
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "lemonfiber": "fdc71e22778e452a697b4a1026e33c9b779066e1",
+  "against": "recordings",
+  "proofs": [
+    {
+      "id": "sabnzbd.guarded",
+      "kind": "proof",
+      "outcome": "passed",
+      "detail": ""
+    }
+  ]
+}

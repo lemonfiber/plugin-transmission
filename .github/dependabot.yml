@@ -1,0 +1,35 @@
+# Not configured here, deliberately:
+#
+#   The recorded responses in `fixtures/` are a recording of another project's
+#   HTTP replies, not a dependency. Nothing resolves them and nothing has a
+#   version to bump.
+#
+#   The image `plugin.toml` names is pinned by digest and is not a dependency
+#   either — moving it is an author's decision about what this plugin installs
+#   on somebody's machine, made with the proofs re-recorded against the new
+#   image. A bot that moved it would be changing what runs, unreviewed.
+#
+# So this covers the one thing that is: the actions and reusable workflows CI
+# runs.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: Europe/Amsterdam
+    labels: ["dependencies"]
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 3
+      exclude: ["lemonfiber/spec*"]
+    groups:
+      shared-workflows:
+        patterns: ["lemonfiber/spec*"]
+      actions:
+        patterns: ["*"]
+        exclude-patterns: ["lemonfiber/spec*"]
+        update-types: ["minor", "patch"]

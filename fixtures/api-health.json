@@ -1,0 +1,16 @@
+{
+  "recorded_from": "docker.io/jvmilazz0/kavita@sha256:b9c671586db2a6a688da3cb4b45f1319cca33b01e6e760c8bf3c19d60101bdf2",
+  "note": "The path the declared health probe asks for, on a fresh instance. It answers `Ok` as plain text rather than JSON, which is why the proof over it constrains the content type and the first bytes rather than looking for a field.",
+  "request": {
+    "method": "GET",
+    "path": "/api/health"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/plain; charset=utf-8"
+    },
+    "json": null,
+    "body_starts_with": "Ok"
+  }
+}
