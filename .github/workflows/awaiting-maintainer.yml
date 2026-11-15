@@ -4,16 +4,17 @@
 #
 #   gates     gates / gates
 #   pin-only  pin-only / pin-only
-#   plugin    reader, manifest, proofs, image, reader-tests,
-#             bundled-part / what changed, bundled-part / plugin
-#   codeql    analyze (actions), analyze (python), alerts / alerts
+#   plugin    plugin / what changed, plugin / plugin, recordings
+#   rust      fmt, clippy, test, coverage, deny, msrv
+#   adapter   adapter-image
+#   codeql    analyze (actions), analyze (rust), alerts / alerts
 #   sonar     gate / gate
 #
 # Add a workflow to branch protection and it belongs here in the same change.
 name: awaiting-maintainer
 on:
   workflow_run:
-    workflows: [gates, pin-only, plugin, codeql, sonar]
+    workflows: [gates, pin-only, plugin, rust, adapter, codeql, sonar]
     types: [completed]
   pull_request_review:
     types: [submitted]
@@ -26,6 +27,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: lemonfiber/spec/.github/workflows/awaiting-maintainer.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    uses: lemonfiber/spec/.github/workflows/awaiting-maintainer.yml@c0fa21b081b24ecf98d855c2d14e07f562ffcd4b # v1.0.153
     secrets:
       DISCORD_MAINTAINERS_WEBHOOK: ${{ secrets.DISCORD_MAINTAINERS_WEBHOOK }}

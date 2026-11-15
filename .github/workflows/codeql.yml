@@ -1,4 +1,4 @@
-# CodeQL static analysis of the Python tooling and the workflows (Q-R53).
+# CodeQL static analysis of the Rust crate and the workflows (Q-R53).
 name: codeql
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [actions, python]
+        language: [actions, rust]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,6 +28,8 @@ jobs:
       - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
+      - uses: github/codeql-action/autobuild@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        if: matrix.language == 'rust'
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: "/language:${{ matrix.language }}"
@@ -40,6 +42,6 @@ jobs:
     permissions:
       contents: read
       security-events: read
-    uses: lemonfiber/spec/.github/workflows/codeql-alerts.yml@1fcd8228494a546f53a3ffa36e5a6dba79e71b68 # v1.0.145
+    uses: lemonfiber/spec/.github/workflows/codeql-alerts.yml@c0fa21b081b24ecf98d855c2d14e07f562ffcd4b # v1.0.153
     with:
       analysis: ${{ needs.analyze.result }}

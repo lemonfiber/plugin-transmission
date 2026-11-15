@@ -1,0 +1,17 @@
+# What this repository implements, one row per requirement (OPS-R74).
+#
+# `done` means the requirement is met in full by what is here, `partial` that this
+# repository holds its part and the rest lives elsewhere, `open` that nothing here
+# meets it yet. The release gate and the no-stubs gate read this file; a pull
+# request that changes whether a requirement is met changes its row.
+#
+# Writing the adapter's key and its upstream's credential, running it as the operator,
+# and running the substitute proof end to end are the core's.
+
+requirement = [
+  { id = "ARCH-R391", state = "partial", evidence = ["src/transmission/transfers.rs", "src/transmission/transfers/tests.rs::each_torrent_names_its_hash_category_state_and_when_it_was_added"] },
+  { id = "F14-R15", state = "partial", evidence = ["Cargo.toml", "Dockerfile", ".github/workflows/release.yml"] },
+  { id = "F14-R27", state = "partial", evidence = ["Dockerfile", ".github/workflows/adapter.yml"] },
+  { id = "F14-R28", state = "partial", evidence = ["src/credential.rs", "src/credential/tests.rs::the_file_lemonfiber_wrote_is_read_as_the_credential"] },
+  { id = "F14-R31", state = "partial", evidence = ["plugin.toml", "src/transmission.rs"] },
+]
