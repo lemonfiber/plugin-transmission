@@ -28,10 +28,14 @@ with HTTP Basic and the session id Transmission hands out in a 409.
   configuration directory, the settings and the journal keep their names.
 - **Its proofs' recordings sit under `recordings/transmission/`**, and its
   starting files under `config/transmission/` (`ARCH-R271`).
-- **The RPC account comes in through the environment.** The image's start-up
+- **The RPC account comes in through two starting files.** The image's start-up
   turns RPC authentication off on every start unless `USER` and `PASS` are set,
-  whatever `settings.json` says, so the manifest sets both from the minted
-  secrets (`ARCH-R315`).
+  whatever `settings.json` says. So `config/transmission/rpc-username` and
+  `rpc-password` hold the minted secrets' placeholders, the manifest points
+  `FILE__USER` and `FILE__PASS` at them, and the image sets both from them before
+  Transmission starts. `transmission.guarded` holds the RPC to a 401 for nobody
+  signed in, and `tests/manifest.rs` holds the files and variables to exactly
+  those secrets (`ARCH-R315`, `ARCH-R316`).
 - **Every service declares `reaches` and `asks_for`** (`ARCH-R270`).
 - **The reader is spec's `first-party-plugin` workflow's,** and lemonfiber
   records the recordings itself. There is no Python here.

@@ -29,8 +29,8 @@ user_mode   = "puid-env"
 network     = { via = "network.egress-guard" }
 
 [service.env]
-USER = { secret = "upstream-username" }
-PASS = { secret = "upstream-password" }
+FILE__USER = "/config/rpc-username"
+FILE__PASS = "/config/rpc-password"
 
 [[secret]]
 id     = "upstream-username"
@@ -43,6 +43,20 @@ id     = "upstream-password"
 of     = "transmission"
 minted = true
 why    = "The password of that account, which Transmission keeps only as a salted hash"
+
+[[proof]]
+id      = "transmission.guarded"
+service = "transmission"
+title   = "Transmission answers its RPC to nobody signed in"
+fixture = "recordings/transmission/rpc-guarded.json"
+why     = """
+The torrents name what the household is downloading. Only the adapter asks,
+signed in with the account lemonfiber minted, so a Transmission that answered
+its RPC to a caller presenting nothing would be telling every device that can
+reach it, and taking orders from them.
+"""
+request = { method = "POST", path = "/transmission/rpc" }
+expect  = { status = 401, body_starts_with = "<h1>401: Unauthorized</h1>" }
 
 [[ask]]
 service    = "transmission"

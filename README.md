@@ -14,9 +14,13 @@ and from each tag the release train cuts. The adapter asks Transmission's
 JSON-RPC interface at `/transmission/rpc` for what it is downloading and seeding,
 stops and starts it, sets its speed limits and their schedule, the port it takes
 peers on and the folder it downloads into.
-lemonfiber mints the RPC account the adapter signs in with and hands it to
-Transmission as the image's `USER` and `PASS`, which its start-up writes into
-`settings.json` on every start, so the RPC never answers without it.
+lemonfiber mints the RPC account the adapter signs in with and writes its name
+and password, before Transmission first starts, into `rpc-username` and
+`rpc-password` in Transmission's configuration directory, each readable by its
+owner alone. The image's start-up reads them through `FILE__USER` and
+`FILE__PASS` on every start and writes them into `settings.json`, where
+Transmission keeps the password as a salted hash, so the RPC never answers
+without the account.
 
 Transmission holds a download folder and no categories: a curator files each
 category in a folder of its own name under that folder. So filing a category sets
@@ -28,7 +32,7 @@ in `categories.json` in its own configuration directory.
 | Path | What it is |
 | --- | --- |
 | `plugin.toml` | The plugin's manifest |
-| `config/transmission/` | The `settings.json` Transmission starts with, which downloads under `/data` |
+| `config/transmission/` | The `settings.json` Transmission starts with, which downloads under `/data`, and the two files the RPC account is written into |
 | `recordings/transmission/` | The responses its proofs are held to |
 | `src/` | The adapter |
 | `Dockerfile` | The adapter's image |
