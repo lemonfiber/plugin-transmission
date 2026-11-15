@@ -31,13 +31,15 @@ refusal names the capability rather than a version, and `reader` prints it.
 
 `targets.toml` names one of two things. A release, as `lemonfiber =
 "X.Y.Z"`, is fetched once into `.lemonfiber/` beside the manifest and checked
-against the digest published with it. A commit of lemonfiber's `main`, in full,
-as `commit`, is what a plugin names before a release carries what it needs: it is
-refused unless `main` holds it, then built once the way the release train's gate
-builds its candidate, with the `dist` profile, the toolchain and lockfile the
-commit pins and every submodule it embeds, and kept in `.lemonfiber/` under the
-commit. Either is asked the same questions, and the report names the one that
-answered.
+against the digest published with it. A commit of lemonfiber, in full, as
+`commit`, is what a plugin names before a release carries what it needs: it is
+refused unless `main` holds it, or, where the run sets `LEMONFIBER_PULL_HEADS` to
+`true` as a plugin's own checks do, the head of a lemonfiber pull request holds
+it. It is then built once the way the release train's gate builds its candidate,
+with the `dist` profile, the toolchain and lockfile the commit pins and every
+submodule it embeds, and kept in `.lemonfiber/` under the commit. Either is asked
+the same questions, and the report names the one that answered. The catalogue and
+the release train set no such variable, and take no commit `main` does not hold.
 
 Exit 0 = the answer is the one asked for, 1 = it is not, or lemonfiber could not
 be asked.
@@ -48,6 +50,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import pathlib
 import platform
 import re
@@ -57,6 +60,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import tomllib
 import urllib.request
 from typing import NamedTuple
@@ -76,6 +80,9 @@ PROFILE = "dist"
 DIRECTIVE = "#:schema "
 FETCH_TIMEOUT_S = 120
 
+# The envelope kind a build wrapping `plugin claims --json` names its answer by.
+CLAIMS_KIND = "plugin-claims"
+
 # The one refusal that is about the release rather than the manifest.
 UNOFFERED = "is not something this build offers a plugin"
 
@@ -87,6 +94,13 @@ DECLARED = ("fixture", "constraint", "held", "reason")
 # What `targets.toml` names a release under, and a commit under.
 RELEASE_KEY = "lemonfiber"
 COMMIT_KEY = "commit"
+
+# The variable a run sets to `true` to take a commit a lemonfiber pull request's head
+# holds as well as one `main` holds, the refs those heads are fetched from, and where
+# they are kept in the checkout.
+PULL_HEADS_ENV = "LEMONFIBER_PULL_HEADS"
+PULL_HEADS = "refs/pull/*/head"
+PULLED = "refs/pulled"
 
 # A commit as git names one in full. A short one names whatever it happens to
 # match on the day.
@@ -100,18 +114,33 @@ BUILDS = {
 }
 
 
+# How often a registry that did not answer is asked in all, how long the first wait
+# before asking again is, and what each wait is multiplied by for the next.
+REGISTRY_ATTEMPTS = 4
+REGISTRY_FIRST_WAIT_S = 5
+REGISTRY_BACKOFF = 3
+
+# What a registry says where it holds no such image, tag or digest. Any other failure
+# is a registry that did not answer: a rate limit, a server error, the network.
+ABSENT = re.compile(r"not found|manifest unknown|name unknown", re.IGNORECASE)
+
+
 class Unasked(RuntimeError):
     """lemonfiber could not be fetched, built or asked, so nothing was decided."""
 
 
+class Unanswered(RuntimeError):
+    """A registry did not say whether it holds a reference, however often it was asked."""
+
+
 class Target(NamedTuple):
-    """The lemonfiber `targets.toml` names: a release, or a commit of `main`."""
+    """The lemonfiber `targets.toml` names: a release, or a commit."""
 
     name: str
     commit: bool
 
     def __str__(self) -> str:
-        return f"lemonfiber's {TRUNK} at {self.name}" if self.commit else self.name
+        return f"lemonfiber at {self.name}" if self.commit else self.name
 
 
 def targeted() -> Target:
@@ -180,25 +209,50 @@ def ran(*command: str, at: pathlib.Path) -> str:
     return done.stdout
 
 
+def pull_heads_taken() -> bool:
+    """Whether this run takes a commit a lemonfiber pull request's head holds."""
+    return os.environ.get(PULL_HEADS_ENV) == "true"
+
+
+def holds(commit: str, *refs: str, at: pathlib.Path) -> bool:
+    """Whether any of `refs` holds `commit`, which a commit git has not got is not."""
+    holding = subprocess.run(
+        ["git", "for-each-ref", "--count=1", "--contains", commit, "--format=%(refname)", *refs],
+        cwd=at, capture_output=True, text=True, check=False,
+    )
+    return holding.returncode == 0 and holding.stdout.strip() != ""
+
+
+def unheld(commit: str, source: pathlib.Path) -> str | None:
+    """Why the commit may not be built: `main` does not hold it, nor, where this run takes
+    them, does any lemonfiber pull request's head."""
+    if holds(commit, f"refs/remotes/origin/{TRUNK}", at=source):
+        return None
+    if not pull_heads_taken():
+        return f"{TARGETS.name} names the commit {commit}, which lemonfiber's {TRUNK} does not hold"
+    ran("git", "fetch", "--quiet", "origin", f"+{PULL_HEADS}:{PULLED}/*", at=source)
+    if holds(commit, PULLED, at=source):
+        return None
+    return f"{TARGETS.name} names the commit {commit}, which neither lemonfiber's {TRUNK} nor the head of any of its pull requests holds"
+
+
 def built(commit: str, named: str, held: pathlib.Path) -> None:
-    """lemonfiber built at a commit of `main`, the way the release train's gate builds its
+    """lemonfiber built at a commit, the way the release train's gate builds its
     candidate, and kept under the commit.
 
-    The commit is held to `main` before anything is built. The checkout is made
-    outside this repository, so no cargo configuration here reaches the build, and
-    is thrown away once the binary is kept; cargo's own target directory, wherever
-    it is configured to be, is not. The binary is moved into place whole, so a
-    build that stops part-way leaves nothing that reads as kept.
+    The commit is held to `main`, or to a pull request's head where this run takes
+    one, before anything is built. The checkout is made outside this repository, so
+    no cargo configuration here reaches the build, and is thrown away once the
+    binary is kept; cargo's own target directory, wherever it is configured to be,
+    is not. The binary is moved into place whole, so a build that stops part-way
+    leaves nothing that reads as kept.
     """
     with tempfile.TemporaryDirectory() as scratch:
         source = pathlib.Path(scratch) / "lemonfiber"
         ran("git", "clone", "--quiet", "--no-checkout", "--filter=blob:none", CORE, str(source), at=pathlib.Path(scratch))
-        held_by_main = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", commit, f"origin/{TRUNK}"],
-            cwd=source, capture_output=True, check=False,
-        )
-        if held_by_main.returncode != 0:
-            raise Unasked(f"{TARGETS.name} names the commit {commit}, which lemonfiber's {TRUNK} does not hold")
+        refused = unheld(commit, source)
+        if refused is not None:
+            raise Unasked(refused)
         ran("git", "checkout", "--quiet", "--detach", commit, at=source)
         ran("git", "submodule", "update", "--init", "--recursive", "--depth", "1", at=source)
         print(f"building {Target(commit, commit=True)} for {named}; it is kept, so this happens once.", file=sys.stderr)
@@ -224,12 +278,14 @@ def plugin(*asked: str) -> subprocess.CompletedProcess:
 
 
 def claimed() -> dict:
-    """What `lemonfiber plugin claims --json` says, or why it said nothing."""
+    """What `lemonfiber plugin claims --json` says, out of its envelope where the build
+    answers in one, or why it said nothing."""
     answer = plugin("claims", "--json")
     try:
-        return json.loads(answer.stdout)
+        said = json.loads(answer.stdout)
     except ValueError:
         raise Unasked(f"lemonfiber read nothing here: {answer.stderr.strip()}") from None
+    return said["data"] if said.get("kind") == CLAIMS_KIND else said
 
 
 def reader() -> int:
@@ -388,13 +444,43 @@ def proofs() -> int:
     return 1 if failing or not found else 0
 
 
-def resolves(reference: str) -> str:
-    """The digest a reference names in its registry now, or nothing."""
-    asked = subprocess.run(
-        ["docker", "buildx", "imagetools", "inspect", reference, "--format", "{{.Manifest.Digest}}"],
-        capture_output=True, text=True, check=False,
-    )
-    return asked.stdout.strip() if asked.returncode == 0 else ""
+def resolves(reference: str) -> str | None:
+    """The digest a reference names in its registry now, or None where the registry holds no such reference.
+
+    A registry that fails without saying it holds none is asked again, waiting longer
+    each time, and raises `Unanswered` once every attempt has failed.
+    """
+    wait = REGISTRY_FIRST_WAIT_S
+    for attempt in range(1, REGISTRY_ATTEMPTS + 1):
+        asked = subprocess.run(
+            ["docker", "buildx", "imagetools", "inspect", reference, "--format", "{{.Manifest.Digest}}"],
+            capture_output=True, text=True, check=False,
+        )
+        if asked.returncode == 0:
+            return asked.stdout.strip()
+        said = (asked.stderr.strip() or asked.stdout.strip()).splitlines()
+        if ABSENT.search(" ".join(said)):
+            return None
+        if attempt < REGISTRY_ATTEMPTS:
+            time.sleep(wait)
+            wait *= REGISTRY_BACKOFF
+    last = said[-1] if said else f"exit {asked.returncode}"
+    raise Unanswered(f"{reference} could not be checked: its registry did not answer in {REGISTRY_ATTEMPTS} attempts ({last})")
+
+
+def pinned_image(service: dict) -> tuple[bool, str]:
+    """Whether one service's pinned digest resolves and its tag still names it, and what to say."""
+    pinned = f"{service['image']}@{service['digest']}"
+    try:
+        held = resolves(pinned) == service["digest"]
+        tagged = resolves(f"{service['image']}:{service['tag']}") if held else None
+    except Unanswered as why:
+        return False, str(why)
+    if not held:
+        return False, f"{pinned} is not in its registry"
+    if tagged and tagged != service["digest"]:
+        return False, f"{service['image']}:{service['tag']} names {tagged}, not the pinned digest"
+    return True, f"{pinned}, which {service['tag']} names" if tagged else pinned
 
 
 def image() -> int:
@@ -402,17 +488,9 @@ def image() -> int:
     services = tomllib.loads(MANIFEST.read_text(encoding="utf-8")).get("service", [])
     faults = 0
     for service in services:
-        pinned = f"{service['image']}@{service['digest']}"
-        if resolves(pinned) != service["digest"]:
-            print(f"::error::{pinned} is not in its registry")
-            faults += 1
-            continue
-        tagged = resolves(f"{service['image']}:{service['tag']}")
-        if tagged and tagged != service["digest"]:
-            print(f"::error::{service['image']}:{service['tag']} names {tagged}, not the pinned digest")
-            faults += 1
-        else:
-            print(f"  ok   {pinned}, which {service['tag']} names" if tagged else f"  ok   {pinned}")
+        held, said = pinned_image(service)
+        print(f"  ok   {said}" if held else f"::error::{said}")
+        faults += not held
     vouched = plugin("provenance")
     print(vouched.stdout + vouched.stderr)
     return 1 if faults or vouched.returncode != 0 else 0
