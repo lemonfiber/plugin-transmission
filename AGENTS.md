@@ -21,6 +21,15 @@ says how the catalogue pins this repository and how lemonfiber carries it.
 
 The adapter asks Transmission's JSON-RPC 2.0 interface, `POST /transmission/rpc`,
 with HTTP Basic and the session id Transmission hands out in a 409.
+`plugin.toml` runs Transmission beside the adapter, `transmission-adapter`, which
+`fronts` it.
+
+`conformance/` holds one recording per case of the contract the adapter speaks.
+`lemonfiber plugin record .`, at the commit `targets.toml` names, writes them
+against a throwaway Transmission at the digest `plugin.toml` pins and the adapter
+it pins; CI takes every recording again with the adapter built from this tree.
+Re-record whenever the adapter's answers or either digest change.
+`tests/conformance.rs` reads every recording with the core's own client.
 
 ## The rules you cannot break
 
@@ -50,9 +59,10 @@ with HTTP Basic and the session id Transmission hands out in a 409.
   `categories.json`, the category names it was asked to file.
 - **The core's crates move with the train.** The `rev` in `Cargo.toml` is the
   core commit `targets.toml` names, the same for every `lemonfiber-*` crate.
-- **Moving Transmission's digest** means recording every proof's response again
-  against the new image in the same change, moving `RELEASE` and `DIGEST` in
-  `src/adapter.rs` with it, and committing the `proofs.json` the checks write.
+- **Moving Transmission's digest** means recording every proof's response and
+  conformance case again against the new image in the same change, moving
+  `RELEASE` and `DIGEST` in `src/adapter.rs` with it, and committing the
+  `proofs.json` the checks write.
 
 ## Checks
 
@@ -60,4 +70,6 @@ with HTTP Basic and the session id Transmission hands out in a 409.
 just ci
 ```
 
-The gates that need nothing but this tree. The plugin verdict runs in CI.
+The gates that need nothing but this tree. The plugin verdict and the
+conformance recordings run in CI; `just recordings` takes the recordings again
+locally, with Docker.

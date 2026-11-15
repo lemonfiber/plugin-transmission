@@ -27,10 +27,27 @@ asks_for    = "Announces to a torrent's trackers and exchanges data with peers, 
 takes_data  = true
 user_mode   = "puid-env"
 network     = { via = "network.egress-guard" }
+native      = "transmission"
 
 [service.env]
 FILE__USER = "/config/rpc-username"
 FILE__PASS = "/config/rpc-password"
+
+[[service]]
+id          = "transmission-adapter"
+name        = "Transmission adapter"
+image       = "ghcr.io/lemonfiber/transmission-adapter"
+digest      = "sha256:686efcb5eb54d2c744da6b561cc944fa218281ec322e9fa1fd198ebeb4a9561d"
+tag         = "main-7292d1c583ae"
+criticality = "core"
+reaches     = ""
+asks_for    = "Nothing beyond this machine. It answers lemonfiber's download.torrent contract by calling Transmission, beside it, with the account lemonfiber minted for it."
+config_path = "/config"
+listens     = 8080
+speaks      = ["download.torrent@1"]
+fronts      = "transmission"
+provides    = ["download.torrent"]
+upstream    = { username = { secret = "upstream-username" }, password = { secret = "upstream-password" } }
 
 [[secret]]
 id     = "upstream-username"

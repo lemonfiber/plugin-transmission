@@ -1,0 +1,10 @@
+{
+  "recorded_from": "lscr.io/linuxserver/transmission@sha256:aaf349cd859ca9d5f34f394c56b8097c267a513283698adc4d07ee61d7cb1a85",
+  "note": "What it has moved since it started, which is all its session keeps of the month asked for, and says so.",
+  "request": {"method": "POST", "path": "/lemonfiber/download.torrent/v1/moved", "accept": "application/json"},
+  "response": {
+    "status": 200,
+    "headers": {"content-type": "application/json"},
+    "json": {"down": 0, "since_start": true, "up": 0}
+  }
+}
