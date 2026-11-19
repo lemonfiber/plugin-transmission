@@ -44,15 +44,31 @@ async fn stopping_it_stops_new_torrents_starting_before_it_stops_every_torrent()
     );
 }
 
-#[tokio::test]
-async fn a_client_that_took_both_writes_and_went_on_running_says_so() {
-    let (transmission, _) = client(vec![
+#[tokio::test(start_paused = true)]
+async fn a_stop_is_read_again_until_the_torrents_have_stopped() {
+    let (transmission, http) = client(vec![
         answered(DONE),
         answered(DONE),
         holding(RUNNING),
         answered(WAITS),
+        holding(IDLE),
+        answered(WAITS),
     ]);
+    assert_eq!(transmission.stop().await.ok(), Some(Pulling::Stopped));
+    assert_eq!(http.requests().len(), 6);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_client_still_running_once_the_wait_is_over_says_it_runs() {
+    let mut answers = vec![answered(DONE), answered(DONE)];
+    for _ in 0..30 {
+        answers.extend([holding(RUNNING), answered(WAITS)]);
+    }
+    let (transmission, http) = client(answers);
+    let started = tokio::time::Instant::now();
     assert_eq!(transmission.stop().await.ok(), Some(Pulling::Fetching));
+    assert!(started.elapsed() >= super::SETTLING);
+    assert!(http.requests().len() < 2 + 60);
 }
 
 #[tokio::test]
@@ -64,6 +80,7 @@ async fn starting_it_again_lets_new_torrents_start_as_well_as_every_torrent_held
         answered(STARTS),
     ]);
     assert_eq!(transmission.resume().await.ok(), Some(Pulling::Fetching));
+    assert_eq!(http.requests().len(), 4);
     assert_eq!(
         called(&http).get(..2),
         Some(

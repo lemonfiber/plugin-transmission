@@ -28,6 +28,7 @@ tokio = { version = "1", features = ["fs", "macros", "net", "rt-multi-thread", "
 toml = "1.1"
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json"] }
 tower = { version = "0.5", default-features = false, features = ["util"] }
 lemonfiber-fixtures = { git = "https://github.com/lemonfiber/lemonfiber", rev = "53d9c9f5a8824c3df9f9ee45876a396e6983464c" }
