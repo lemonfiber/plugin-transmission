@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use lemonfiber_ports::service::{Failure, Fetching, Pulling};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
+use tokio::time::{Duration, Instant};
 
 use super::{Transmission, STOPPED};
 
@@ -10,6 +11,10 @@ const START_ADDED: &str = "start_added_torrents";
 const STOP: &str = "torrent_stop";
 
 const START: &str = "torrent_start";
+
+const SETTLING: Duration = Duration::from_secs(5);
+
+const LOOKING: Duration = Duration::from_millis(250);
 
 #[derive(Deserialize)]
 struct Running {
@@ -34,6 +39,19 @@ impl Transmission {
         self.act(method, json!({}), "the torrents could not be told")
             .await
     }
+
+    /// What the client reads as once it reads as `told`, or what it last read as once
+    /// [`SETTLING`] has passed.
+    async fn settled(&self, told: Pulling) -> Result<Pulling, Failure> {
+        let until = Instant::now() + SETTLING;
+        loop {
+            let read = self.pulling().await?;
+            if read == told || Instant::now() >= until {
+                return Ok(read);
+            }
+            tokio::time::sleep(LOOKING).await;
+        }
+    }
 }
 
 #[async_trait]
@@ -57,13 +75,13 @@ impl Fetching for Transmission {
     async fn stop(&self) -> Result<Pulling, Failure> {
         self.starting_added(false).await?;
         self.every_torrent(STOP).await?;
-        self.pulling().await
+        self.settled(Pulling::Stopped).await
     }
 
     async fn resume(&self) -> Result<Pulling, Failure> {
         self.starting_added(true).await?;
         self.every_torrent(START).await?;
-        self.pulling().await
+        self.settled(Pulling::Fetching).await
     }
 }
 
