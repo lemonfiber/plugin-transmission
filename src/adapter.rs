@@ -14,11 +14,7 @@ pub const ADDRESS: &str = "http://transmission:9091";
 /// The upstream this adapter fronts, as its project names itself.
 pub const UPSTREAM: &str = "Transmission";
 
-/// The Transmission release this adapter's recordings were taken from.
-pub const RELEASE: &str = "4.1.4-r0-ls369";
-
-/// The digest of the image that release's recordings were taken from.
-pub const DIGEST: &str = "sha256:aaf349cd859ca9d5f34f394c56b8097c267a513283698adc4d07ee61d7cb1a85";
+include!(concat!(env!("OUT_DIR"), "/fronted.rs"));
 
 /// What this adapter says it is: the contract it speaks and the release it supports.
 #[must_use]
